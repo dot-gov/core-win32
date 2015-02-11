@@ -131,6 +131,7 @@ BOOL SkypeACLKeyGen(char *lpUserName, char *lpFileName, char *lpOutKey1, char *l
 	RtlCopyMemory(lpOutPath, result, strlen(result));
 	free(result);
 
+/*
 	// encrypt date
 	char today[32];
 	SYSTEMTIME sys_time;
@@ -150,9 +151,38 @@ BOOL SkypeACLKeyGen(char *lpUserName, char *lpFileName, char *lpOutKey1, char *l
 	result = Encrypt(lpUserName, count);
 	RtlCopyMemory(lpOutKey6, result, strlen(result));
 	free(result);
+*/
 
 	free(szUSERNAME);
 	free(szFILENAME);
+
+    char today[32];
+    char localeformat[256];
+    SYSTEMTIME sys_time;
+    GetSystemTime(&sys_time);
+
+    RtlZeroMemory(localeformat, sizeof(localeformat));
+    RtlZeroMemory(today, sizeof(today));
+
+    LCID lcid = GetThreadLocale();
+    if(!GetLocaleInfoA(lcid, LOCALE_SSHORTDATE, localeformat, sizeof(localeformat)))
+	{
+		free(result);
+		return FALSE;
+	}
+    if(!GetDateFormatA(lcid, 0, &sys_time, localeformat, today, sizeof(today)))
+	{
+		free(result);
+		return FALSE;
+	}
+
+    result = Encrypt(lpUserName, today);
+    RtlCopyMemory(lpOutKey5, result, strlen(result));
+	free(result);
+
+    result = Encrypt(lpUserName, "3");    //
+    RtlCopyMemory(lpOutKey6, result, strlen(result));
+	free(result);    
 
 	return TRUE;
 }

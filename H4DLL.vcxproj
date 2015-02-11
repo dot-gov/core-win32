@@ -138,6 +138,7 @@
     <ClCompile Include="Social\Cookie_FireFox.cpp" />
     <ClCompile Include="Social\Cookie_IExplorer.cpp" />
     <ClCompile Include="Social\Handler_Facebook.cpp" />
+    <ClCompile Include="Social\Handler_GDrive.cpp" />
     <ClCompile Include="Social\Handler_GMail.cpp" />
     <ClCompile Include="Social\Handler_Outlook.cpp" />
     <ClCompile Include="Social\Handler_Twitter.cpp" />
@@ -146,6 +147,7 @@
     <ClCompile Include="Social\SocialMain.cpp" />
     <ClCompile Include="status_log.cpp" />
     <ClCompile Include="UnHookClass.cpp" />
+    <ClCompile Include="utils.cpp" />
     <ClCompile Include="x64.cpp" />
     <ClCompile Include="aes_alg.cpp" />
     <ClCompile Include="md5.cpp" />
@@ -271,11 +273,13 @@
     <ClInclude Include="SM_Core.h" />
     <ClInclude Include="SM_EventHandlers.h" />
     <ClInclude Include="Social\CookieHandler.h" />
+    <ClInclude Include="Social\Handler_GDrive.h" />
     <ClInclude Include="Social\Handler_Yahoo.h" />
     <ClInclude Include="Social\NetworkHandler.h" />
     <ClInclude Include="Social\SocialMain.h" />
     <ClInclude Include="status_log.h" />
     <ClInclude Include="UnHookClass.h" />
+    <ClInclude Include="utils.h" />
     <ClInclude Include="x64.h" />
     <ClInclude Include="HM_AmbMic.h" />
     <ClInclude Include="HM_Application.h" />

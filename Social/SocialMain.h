@@ -1,4 +1,4 @@
-#define SOCIAL_ENTRY_COUNT 8
+#define SOCIAL_ENTRY_COUNT 9
 
 #define SOCIAL_REQUEST_SUCCESS 0
 #define SOCIAL_REQUEST_BAD_COOKIE 1
@@ -15,16 +15,18 @@ typedef struct {
 } social_entry_struct;
 
 #define FACEBOOK_DOMAIN L"facebook.com"
-#define GMAIL_DOMAIN L"mail.google.com"
-#define TWITTER_DOMAIN L"twitter.com"
-#define OUTLOOK_DOMAIN L"live.com"
-#define YAHOO_DOMAIN L"yahoo.com"
+#define GMAIL_DOMAIN	L"mail.google.com"
+#define TWITTER_DOMAIN	L"twitter.com"
+#define OUTLOOK_DOMAIN	L"live.com"
+#define YAHOO_DOMAIN	L"yahoo.com"
+#define GDRIVE_DOMAIN	L"mail.google.com" //google drive and docs
 
-#define FACEBOOK_DOMAINA "facebook.com"
-#define GMAIL_DOMAINA "mail.google.com"
-#define TWITTER_DOMAINA "twitter.com"
-#define OUTLOOK_DOMAINA "live.com"
-#define YAHOO_DOMAINA "yahoo.com"
+#define FACEBOOK_DOMAINA	"facebook.com"
+#define GMAIL_DOMAINA		"mail.google.com"
+#define TWITTER_DOMAINA		"twitter.com"
+#define OUTLOOK_DOMAINA		"live.com"
+#define YAHOO_DOMAINA		"yahoo.com"
+#define GDRIVE_DOMAINA		"mail.google.com" //google drive and docs
 
 #define MAPI_V3_0_PROTO	2012030601
 

