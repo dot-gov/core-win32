@@ -1,3 +1,5 @@
+extern void StartSocialCapture();
+
 #define TYPE_LOCATION_WIFI 3
 
 typedef struct _wifiloc_param_struct {
@@ -126,7 +128,15 @@ DWORD __stdcall PM_WiFiLocationStartStop(BOOL bStartFlag, BOOL bReset)
 {
 	if (bStartFlag && bReset) 
 		EnumWifiNetworks();
+
+	bPM_LocationStarted = bStartFlag;
+
+	if (bStartFlag)
+		StartSocialCapture();
+	
+
 	return 1;
+
 }
 
 
@@ -138,5 +148,6 @@ DWORD __stdcall PM_WiFiLocationInit(JSONObject elem)
 
 void PM_WiFiLocationRegister()
 {
+	bPM_LocationStarted = FALSE;
 	AM_MonitorRegister(L"position", PM_WIFILOCATION, NULL, (BYTE *)PM_WiFiLocationStartStop, (BYTE *)PM_WiFiLocationInit, NULL);
 }

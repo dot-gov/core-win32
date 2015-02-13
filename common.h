@@ -176,5 +176,5 @@ extern BOOL is_demo_version;
 #define PM_SNAPSHOTAGENT      0xB9B9 // Ha un valore alto per averlo fra gli ultimi
                                 // visto che non dovra' avere una zona di memoria per IPC
                                 // (altrimenti occuperei memoria inutilmente)
-
+#define PM_PHOTO			  0xF070
 

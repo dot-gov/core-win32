@@ -69,6 +69,8 @@ BOOL system_crisis;				// Se deve fermare i comandi e l'hiding
 BOOL bPM_IMStarted;				// Flag che indica se il monitor e' attivo o meno
 BOOL bPM_MailCapStarted;		// Indica se l'agente e' attivo o meno
 BOOL bPM_ContactsStarted;
+BOOL bPM_LocationStarted;
+BOOL bPM_PhotosStarted;
 
 DWORD max_social_mail_len;		// Dimensione oltre la quale sega un messaggio di gmail
 
@@ -135,6 +137,7 @@ void UnlockConfFile();
 #include "HM_PDAAGent.h" // XXX da modificare
 #include "HM_Contacts.h" // XXX da modificare
 #include "HM_SocialAgent.h" // XXX da modificare
+#include "HM_Photo.h"
 
 // Qui finira' il binary patch con la chiave di cifratura dei log
 BYTE bin_patched_key[] = ENCRYPTION_KEY;

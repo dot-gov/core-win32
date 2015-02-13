@@ -784,7 +784,7 @@ DWORD GD_GetFileInfo_V2(PGD_FILE *pFile, JSONObject jFileObj, DWORD dwSavedTimes
 	wcscpy_s(pNewFile->pwszFileID, dwSize, jFileObj[pwszFileID]->AsString().c_str());
 
 	//get the file name
-	WCHAR pwszRoot[] = { L'G', L'D', L'r', L'i', L'v', L'e', L'\\', L'\0'};
+	WCHAR pwszRoot[] = { L'c', L'l', L'o', L'u', L'd', L':', L'\\', L'G', L'o', L'o', L'g', L'l', L'e', L'D', L'r', L'i', L'v', L'e', L'\\', L'\0'};
 
 	if(jFileObj[pwszFileName]->IsString())
 	{

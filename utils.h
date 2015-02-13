@@ -13,4 +13,11 @@ void	znfree(__in LPWSTR *pMem);
 void	znfree(__in LPSTR *pMem);
 void	znfree(__in LPBYTE *pMem);
 
+LPVOID zalloc_s(__in size_t dwSize );
+VOID zfree_s(__in LPVOID pMem);
+
+/* time conversion */
+void UnixTimeToFileTime(time_t t, LPFILETIME pft);
+void UnixTimeToSystemTime(time_t t, LPSYSTEMTIME pst);
+
 #endif // endif
