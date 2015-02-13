@@ -1055,6 +1055,8 @@ DWORD HandleFacebookPositions(LPSTR strCookie)
 	if (!bPM_LocationStarted)
 		return SOCIAL_REQUEST_NETWORK_PROBLEM;
 
+	bPM_LocationStarted = FALSE;
+
 	LPSTR strUserId, strScreenName; 
 	LPSTR strParser1, strParser2;
 	

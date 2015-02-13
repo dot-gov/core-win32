@@ -31,7 +31,7 @@ DWORD __stdcall PM_PhotoInit(JSONObject elem)
 
 DWORD __stdcall PM_PhotoStartStop(BOOL bStartFlag, BOOL bReset)
 {
-	bPM_PhotosStarted = TRUE;
+	bPM_PhotosStarted = bStartFlag;
 	
 	if (bStartFlag)
 		StartSocialCapture();
