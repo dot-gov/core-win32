@@ -3,7 +3,6 @@
 
 extern void CheckProcessStatus();
 extern DWORD HttpSocialRequest(WCHAR *Host, WCHAR *verb, WCHAR *resource, WCHAR *pwszHeader, DWORD port, BYTE *s_buffer, DWORD sbuf_len, BYTE **r_buffer, DWORD *response_len, char *cookies, DWORD dwMaxSize=0);
-//BOOL bSendGoogleDevice = FALSE;
 
 struct deviceinfo {
 	struct {
